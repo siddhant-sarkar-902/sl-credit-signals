@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>slice Credit Signal — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --purple:       #6B3FA0;
+    --purple-light: #8B5CC8;
+    --purple-pale:  #F3EEFF;
+    --purple-mid:   #E5D8FF;
+    --green:        #22C55E;
+    --green-pale:   #DCFCE7;
+    --amber:        #F59E0B;
+    --amber-pale:   #FEF3C7;
+    --red:          #EF4444;
+    --red-pale:     #FEE2E2;
+    --text-main:    #0F0F1A;
+    --text-sub:     #6B7280;
+    --text-muted:   #9CA3AF;
+    --border:       #E9E3F5;
+    --bg:           #F8F6FD;
+    --white:        #FFFFFF;
+    --radius-sm:    10px;
+    --radius-md:    16px;
+    --radius-lg:    24px;
+    --shadow:       0 2px 12px rgba(107,63,160,0.10);
+    --shadow-card:  0 4px 20px rgba(107,63,160,0.12);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #E8E2F5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* Phone shell */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 48px;
+    box-shadow: 0 30px 80px rgba(107,63,160,0.30), inset 0 0 0 2px rgba(255,255,255,0.5);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Status bar */
+  .status-bar {
+    background: var(--purple);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 700; }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .status-icons span { font-size: 11px; }
+
+  /* Screen container */
+  .screen-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    display: none;
+    flex-direction: column;
+    background: var(--bg);
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active { display: flex; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 18px;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+    border: none;
+    background: none;
+  }
+  .nav-item .nav-icon { font-size: 20px; }
+  .nav-item .nav-label { font-size: 10px; font-weight: 500; color: var(--text-muted); }
+  .nav-item.active .nav-label { color: var(--purple); font-weight: 600; }
+  .nav-item.active .nav-icon { filter: none; }
+  .nav-dot {
+    width: 4px; height: 4px;
+    background: var(--purple);
+    border-radius: 50%;
+    display: none;
+  }
+  .nav-item.active .nav-dot { display: block; }
+
+  /* ─── SCREEN STYLES ─── */
+
+  /* Top bar */
+  .topbar {
+    background: var(--purple);
+    color: white;
+    padding: 16px 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar-back {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar h2 { font-size: 17px; font-weight: 700; }
+  .topbar-logo { font-size: 22px; font-weight: 800; letter-spacing: -1px; }
+  .topbar-spacer { flex: 1; }
+  .topbar-avatar {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+
+  /* Content scroll area */
+  .content { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* Cards */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-header h3 { font-size: 14px; font-weight: 700; color: var(--text-main); }
+  .card-body { padding: 0 16px 16px; }
+  .card-full { padding: 16px; }
+
+  /* Hero card (credit card visual) */
+  .credit-card-visual {
+    background: linear-gradient(135deg, var(--purple) 0%, #A855F7 100%);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    color: white;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+  }
+  .credit-card-visual::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 140px; height: 140px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+  }
+  .credit-card-visual::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: 40px;
+    width: 100px; height: 100px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  .card-chip { font-size: 26px; margin-bottom: 12px; }
+  .card-number { font-size: 13px; letter-spacing: 2px; opacity: 0.8; margin-bottom: 16px; }
+  .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+  .card-name { font-size: 13px; font-weight: 600; opacity: 0.9; }
+  .card-limit { text-align: right; }
+  .card-limit-label { font-size: 10px; opacity: 0.7; }
+  .card-limit-amount { font-size: 18px; font-weight: 800; }
+  .card-type { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+
+  /* Quick stats row */
+  .quick-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-box {
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
+  .stat-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; }
+  .stat-value { font-size: 18px; font-weight: 800; color: var(--text-main); }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Credit health preview card */
+  .ch-preview {
+    background: linear-gradient(135deg, #F3EEFF 0%, #EDE8FF 100%);
+    border: 1.5px solid var(--purple-mid);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .ch-preview:hover { transform: scale(1.01); }
+  .ch-preview-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .ch-preview-title { font-size: 14px; font-weight: 700; color: var(--purple); }
+  .ch-preview-sub { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+  .ch-preview-badge { background: var(--purple); color: white; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 20px; }
+  .signal-dots { display: flex; gap: 6px; }
+  .signal-dot {
+    flex: 1; height: 6px; border-radius: 3px;
+  }
+  .dot-green  { background: var(--green); }
+  .dot-amber  { background: var(--amber); }
+  .dot-red    { background: var(--red); }
+  .ch-preview-cta { font-size: 12px; color: var(--purple); font-weight: 600; margin-top: 10px; display: flex; align-items: center; gap: 4px; }
+
+  /* ─── CREDIT HEALTH DASHBOARD ─── */
+  .ch-hero {
+    background: linear-gradient(160deg, var(--purple) 0%, #9333EA 100%);
+    color: white;
+    padding: 20px;
+    flex-shrink: 0;
+  }
+  .ch-hero-label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .ch-hero-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .ch-hero-sub { font-size: 13px; opacity: 0.75; line-height: 1.5; }
+  .ch-overall {
+    background: rgba(255,255,255,0.15);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .ch-score-circle {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 2.5px solid rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+    flex-shrink: 0;
+  }
+  .ch-overall-text { font-size: 12px; opacity: 0.85; line-height: 1.5; }
+
+  /* Signal list */
+  .signal-list { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+
+  .signal-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.15s;
+    border-left: 4px solid transparent;
+  }
+  .signal-card:hover { transform: translateX(2px); }
+  .signal-card.strong  { border-left-color: var(--green); }
+  .signal-card.building { border-left-color: var(--amber); }
+  .signal-card.attention { border-left-color: var(--red); }
+
+  .signal-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .signal-icon { font-size: 20px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .signal-icon.strong   { background: var(--green-pale); }
+  .signal-icon.building { background: var(--amber-pale); }
+  .signal-icon.attention { background: var(--red-pale); }
+  .signal-name { font-size: 13px; font-weight: 700; color: var(--text-main); flex: 1; }
+  .signal-badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+  }
+  .badge-strong   { background: var(--green-pale); color: #16A34A; }
+  .badge-building { background: var(--amber-pale); color: #D97706; }
+  .badge-attention { background: var(--red-pale); color: #DC2626; }
+
+  .signal-desc { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+  .signal-nudge {
+    margin-top: 10px;
+    background: var(--amber-pale);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 11px;
+    color: #92400E;
+    line-height: 1.5;
+    display: flex; gap: 6px;
+  }
+  .signal-arrow { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; flex-shrink: 0; }
+
+  /* Request limit CTA */
+  .limit-cta-card {
+    background: linear-gradient(135deg, #F3EEFF, #EDE8FF);
+    border: 1.5px solid var(--purple-mid);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin: 0 16px 16px;
+  }
+  .limit-cta-title { font-size: 14px; font-weight: 700; color: var(--purple); margin-bottom: 4px; }
+  .limit-cta-sub { font-size: 12px; color: var(--text-sub); line-height: 1.5; margin-bottom: 14px; }
+  .btn-primary {
+    background: var(--purple);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 13px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-secondary {
+    background: var(--purple-pale);
+    color: var(--purple);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+  }
+  .btn-secondary:hover { opacity: 0.85; }
+  .btn-outline {
+    background: transparent;
+    color: var(--purple);
+    border: 1.5px solid var(--purple);
+    border-radius: var(--radius-sm);
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+  }
+
+  /* ─── CIBIL EXPLAINER SCREEN ─── */
+  .onboard-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px 20px;
+  }
+  .onboard-hero { text-align: center; margin-bottom: 28px; }
+  .onboard-icon { font-size: 56px; margin-bottom: 16px; }
+  .onboard-title { font-size: 22px; font-weight: 800; color: var(--text-main); line-height: 1.3; margin-bottom: 8px; }
+  .onboard-sub { font-size: 14px; color: var(--text-sub); line-height: 1.6; }
+  .onboard-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+  .onboard-step {
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    box-shadow: var(--shadow);
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--purple-pale);
+    color: var(--purple);
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
+  .step-desc { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+  .onboard-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 14px;
+    background: var(--purple-pale);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .onboard-check input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--purple);
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .onboard-check-text { font-size: 12px; color: var(--text-main); line-height: 1.5; }
+  .onboard-check-text strong { color: var(--purple); }
+
+  /* ─── LIMIT REVIEW REQUEST ─── */
+  .review-section {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .review-header { text-align: center; padding: 24px 20px 8px; }
+  .review-header-icon { font-size: 40px; margin-bottom: 10px; }
+  .review-header h2 { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+  .review-header p { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
+  .signal-summary {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .signal-summary-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .signal-summary-row:last-child { border-bottom: none; }
+  .ss-name { flex: 1; font-size: 13px; color: var(--text-main); font-weight: 500; }
+  .review-note {
+    background: var(--amber-pale);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 12px;
+    color: #92400E;
+    line-height: 1.5;
+  }
+  .review-note strong { display: block; font-weight: 700; margin-bottom: 4px; }
+  .btn-row { display: flex; flex-direction: column; gap: 10px; padding: 0 0 16px; }
+
+  /* ─── LIMIT REVIEW RESPONSE ─── */
+  .response-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 20px 20px;
+  }
+  .response-icon-circle {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin-bottom: 20px;
+  }
+  .response-icon-circle.declined { background: var(--red-pale); }
+  .response-icon-circle.approved { background: var(--green-pale); }
+  .response-title { font-size: 22px; font-weight: 800; color: var(--text-main); text-align: center; margin-bottom: 8px; }
+  .response-sub { font-size: 13px; color: var(--text-sub); text-align: center; line-height: 1.6; margin-bottom: 28px; }
+  .response-signals {
+    width: 100%;
+    background: var(--white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .response-signal-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .response-signal-row:last-child { border-bottom: none; }
+  .rs-icon { font-size: 16px; width: 28px; text-align: center; flex-shrink: 0; }
+  .rs-name { flex: 1; font-size: 12px; color: var(--text-main); font-weight: 600; }
+  .rs-status { font-size: 11px; font-weight: 700; }
+  .rs-status.issue { color: var(--red); }
+  .rs-status.ok { color: var(--green); }
+  .reapply-banner {
+    width: 100%;
+    background: var(--purple-pale);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 20px;
+  }
+  .reapply-icon { font-size: 18px; flex-shrink: 0; }
+  .reapply-text { font-size: 12px; color: var(--purple); line-height: 1.5; }
+  .reapply-text strong { display: block; font-weight: 700; margin-bottom: 2px; }
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .toggle { width: 36px; height: 20px; background: var(--purple); border-radius: 10px; position: relative; cursor: pointer; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: 0.2s; }
+  .toggle-label { font-size: 11px; color: var(--purple); font-weight: 600; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+  .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 0; }
+
+  /* Tab bar for dashboard */
+  .tab-bar {
+    display: flex;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1; padding: 12px 8px; text-align: center;
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    cursor: pointer; border-bottom: 2.5px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+  /* Notification dot */
+  .notif-banner {
+    background: var(--green-pale);
+    border: 1px solid #86EFAC;
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: flex; gap: 10px; align-items: flex-start;
+    margin: 0 16px;
+  }
+  .notif-icon { font-size: 18px; flex-shrink: 0; }
+  .notif-text { font-size: 12px; color: #166534; line-height: 1.5; }
+  .notif-text strong { font-weight: 700; }
+
+  /* Spacing */
+  .spacer-8  { height: 8px; flex-shrink: 0; }
+  .spacer-16 { height: 16px; flex-shrink: 0; }
+  .spacer-4  { height: 4px; flex-shrink: 0; }
+
+  /* Help text */
+  .help-text { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.5; padding: 0 20px; }
+
+  /* Responsive — desktop view */
+  @media (min-width: 900px) {
+    body { align-items: flex-start; padding: 40px; gap: 40px; }
+    .phone { flex-shrink: 0; }
+    .desktop-info {
+      max-width: 340px;
+      display: block;
+    }
+  }
+
+  .desktop-info { display: none; }
+  .desktop-info h1 { font-size: 26px; font-weight: 800; color: #0F0F1A; margin-bottom: 8px; }
+  .desktop-info p { font-size: 14px; color: #6B7280; line-height: 1.7; margin-bottom: 20px; }
+  .screen-index { display: flex; flex-direction: column; gap: 8px; }
+  .screen-pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(107,63,160,0.08);
+    cursor: pointer;
+    transition: transform 0.15s;
+    border: none;
+    text-align: left;
+  }
+  .screen-pill:hover { transform: translateX(3px); }
+  .screen-pill-icon { font-size: 18px; width: 28px; text-align: center; }
+  .screen-pill-text { font-size: 13px; font-weight: 600; color: #0F0F1A; }
+  .screen-pill-sub { font-size: 11px; color: #9CA3AF; }
+  .screen-pill-phase { margin-left: auto; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+  .phase-p0 { background: #DCFCE7; color: #16A34A; }
+  .phase-p1 { background: #FEF3C7; color: #D97706; }
+  .phase-p2 { background: #EDE8FF; color: #7C3AED; }
+</style>
+</head>
+<body>
+
+<!-- Desktop sidebar -->
+<div class="desktop-info">
+  <h1>slice Credit Signal</h1>
+  <p>Interactive prototype — 6 screens covering the full credit transparency and limit review flow. Click any screen below to jump directly to it.</p>
+  <div class="screen-index">
+    <button class="screen-pill" onclick="showScreen('home')">
+      <span class="screen-pill-icon">🏠</span>
+      <div><div class="screen-pill-text">Home — Card Overview</div><div class="screen-pill-sub">Entry point with Credit Signal teaser</div></div>
+      <span class="screen-pill-phase phase-p0">P0</span>
+    </button>
+    <button class="screen-pill" onclick="showScreen('dashboard')">
+      <span class="screen-pill-icon">📊</span>
+      <div><div class="screen-pill-text">Credit Health Dashboard</div><div class="screen-pill-sub">5 signals, status & nudges</div></div>
+      <span class="screen-pill-phase phase-p0">P0</span>
+    </button>
+    <button class="screen-pill" onclick="showScreen('signal-detail')">
+      <span class="screen-pill-icon">🔍</span>
+      <div><div class="screen-pill-text">Signal Detail — Payment Completeness</div><div class="screen-pill-sub">Drilldown with next best action</div></div>
+      <span class="screen-pill-phase phase-p0">P0</span>
+    </button>
+    <button class="screen-pill" onclick="showScreen('cibil')">
+      <span class="screen-pill-icon">🛡️</span>
+      <div><div class="screen-pill-text">CIBIL Onboarding Explainer</div><div class="screen-pill-sub">One-time acknowledgment screen</div></div>
+      <span class="screen-pill-phase phase-p1">P1</span>
+    </button>
+    <button class="screen-pill" onclick="showScreen('review-request')">
+      <span class="screen-pill-icon">📋</span>
+      <div><div class="screen-pill-text">Limit Review Request</div><div class="screen-pill-sub">1-tap request with signal summary</div></div>
+      <span class="screen-pill-phase phase-p2">P2</span>
+    </button>
+    <button class="screen-pill" onclick="showScreen('review-response')">
+      <span class="screen-pill-icon">📬</span>
+      <div><div class="screen-pill-text">Limit Review Response</div><div class="screen-pill-sub">Declined state with explanation</div></div>
+      <span class="screen-pill-phase phase-p2">P2</span>
+    </button>
+  </div>
+</div>
+
+<!-- Phone -->
+<div class="phone">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <div class="status-icons">
+      <span>●●●</span>
+      <span>WiFi</span>
+      <span>🔋</span>
+    </div>
+  </div>
+
+  <!-- Screen wrap -->
+  <div class="screen-wrap">
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 1: HOME                          -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen active" id="home">
+      <div class="topbar">
+        <span class="topbar-logo">slice</span>
+        <span class="topbar-spacer"></span>
+        <div class="topbar-avatar">S</div>
+      </div>
+
+      <div class="content">
+        <!-- Notification banner -->
+        <div class="notif-banner">
+          <span class="notif-icon">🎉</span>
+          <div class="notif-text"><strong>Your Repayment Streak moved to Strong!</strong> 8 cycles of on-time payments. Keep it up.</div>
+        </div>
+
+        <!-- Credit card visual -->
+        <div class="credit-card-visual">
+          <div class="card-chip">💳</div>
+          <div class="card-number">•••• •••• •••• 4821</div>
+          <div class="card-bottom">
+            <div>
+              <div class="card-name">SIDDHANT SARKAR</div>
+              <div class="card-type">slice UPI Credit Card</div>
+            </div>
+            <div class="card-limit">
+              <div class="card-limit-label">CREDIT LIMIT</div>
+              <div class="card-limit-amount">₹15,000</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick stats -->
+        <div class="quick-stats">
+          <div class="stat-box">
+            <div class="stat-label">Available</div>
+            <div class="stat-value">₹9,840</div>
+            <div class="stat-sub">65.6% free</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Due this cycle</div>
+            <div class="stat-value">₹5,160</div>
+            <div class="stat-sub">Due Mar 5</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">CIBIL Score</div>
+            <div class="stat-value" style="color:var(--green);">731</div>
+            <div class="stat-sub">↑ 12 pts this month</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Utilisation</div>
+            <div class="stat-value" style="color:var(--green);">34%</div>
+            <div class="stat-sub">Under 40% ✓</div>
+          </div>
+        </div>
+
+        <!-- Credit Signal teaser -->
+        <div class="ch-preview" onclick="showScreen('dashboard')">
+          <div class="ch-preview-top">
+            <div>
+              <div class="ch-preview-title">📊 Credit Health</div>
+              <div class="ch-preview-sub">3 of 5 signals are Strong</div>
+            </div>
+            <span class="ch-preview-badge">Updated today</span>
+          </div>
+          <div class="signal-dots">
+            <div class="signal-dot dot-green"></div>
+            <div class="signal-dot dot-green"></div>
+            <div class="signal-dot dot-green"></div>
+            <div class="signal-dot dot-amber"></div>
+            <div class="signal-dot dot-red"></div>
+          </div>
+          <div class="ch-preview-cta">See what's moving your limit →</div>
+        </div>
+
+        <!-- Recent transactions -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Recent Transactions</h3>
+            <span style="font-size:12px;color:var(--purple);font-weight:600;cursor:pointer;">See all</span>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <div style="width:34px;height:34px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;">🍕</div>
+                  <div><div style="font-size:13px;font-weight:600;">Swiggy</div><div style="font-size:11px;color:var(--text-muted);">Mar 2 · UPI</div></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:var(--red);">−₹389</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <div style="width:34px;height:34px;background:#DCFCE7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;">🛒</div>
+                  <div><div style="font-size:13px;font-weight:600;">Zepto</div><div style="font-size:11px;color:var(--text-muted);">Mar 1 · UPI</div></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:var(--red);">−₹672</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:10px;align-items:center;">
+                  <div style="width:34px;height:34px;background:#EDE8FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;">💊</div>
+                  <div><div style="font-size:13px;font-weight:600;">PharmEasy</div><div style="font-size:11px;color:var(--text-muted);">Feb 28 · UPI</div></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:var(--red);">−₹1,240</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 2: CREDIT HEALTH DASHBOARD       -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen" id="dashboard">
+      <div class="topbar">
+        <button class="topbar-back" onclick="showScreen('home')">←</button>
+        <h2>Credit Health</h2>
+      </div>
+
+      <div class="ch-hero">
+        <div class="ch-hero-label">Your Credit Signals</div>
+        <div class="ch-hero-title">3 Strong, 1 Building,<br/>1 Needs Attention</div>
+        <div class="ch-hero-sub">These are the signals slice looks at when reviewing credit limits. No timelines — just honest visibility.</div>
+        <div class="ch-overall">
+          <div class="ch-score-circle">3/5</div>
+          <div class="ch-overall-text">You're doing well on 3 of 5 signals. Focus on <strong>Payment Completeness</strong> for the most impact.</div>
+        </div>
+      </div>
+
+      <div class="spacer-8"></div>
+      <div style="padding:0 16px;"><div class="section-label">What we look at</div></div>
+      <div class="spacer-4"></div>
+
+      <div class="signal-list">
+
+        <!-- Signal 1: Repayment Streak — STRONG -->
+        <div class="signal-card strong" onclick="showSignalDetail('streak')">
+          <div class="signal-top">
+            <div class="signal-icon strong">✅</div>
+            <span class="signal-name">Repayment Streak</span>
+            <span class="signal-badge badge-strong">Strong</span>
+            <span class="signal-arrow">›</span>
+          </div>
+          <div class="signal-desc">You've paid on time for 8 consecutive cycles — this is your strongest signal and carries significant weight.</div>
+        </div>
+
+        <!-- Signal 2: Card Tenure — STRONG -->
+        <div class="signal-card strong" onclick="showSignalDetail('tenure')">
+          <div class="signal-top">
+            <div class="signal-icon strong">📅</div>
+            <span class="signal-name">Card Tenure</span>
+            <span class="signal-badge badge-strong">Strong</span>
+            <span class="signal-arrow">›</span>
+          </div>
+          <div class="signal-desc">Your card has been active for 14 months. Longer tenure builds a more complete credit picture.</div>
+        </div>
+
+        <!-- Signal 3: Utilisation Trend — STRONG -->
+        <div class="signal-card strong" onclick="showSignalDetail('utilisation')">
+          <div class="signal-top">
+            <div class="signal-icon strong">📉</div>
+            <span class="signal-name">Utilisation Trend</span>
+            <span class="signal-badge badge-strong">Strong</span>
+            <span class="signal-arrow">›</span>
+          </div>
+          <div class="signal-desc">Your 3-month average utilisation is 34% — well within the healthy range. You're using credit responsibly.</div>
+        </div>
+
+        <!-- Signal 4: Transaction Frequency — BUILDING -->
+        <div class="signal-card building" onclick="showSignalDetail('frequency')">
+          <div class="signal-top">
+            <div class="signal-icon building">📦</div>
+            <span class="signal-name">Transaction Frequency</span>
+            <span class="signal-badge badge-building">Building</span>
+            <span class="signal-arrow">›</span>
+          </div>
+          <div class="signal-desc">You're averaging 6 transactions/month. Regular, varied usage helps demonstrate active and responsible credit use.</div>
+        </div>
+
+        <!-- Signal 5: Payment Completeness — NEEDS ATTENTION -->
+        <div class="signal-card attention" onclick="showScreen('signal-detail')">
+          <div class="signal-top">
+            <div class="signal-icon attention">⚠️</div>
+            <span class="signal-name">Payment Completeness</span>
+            <span class="signal-badge badge-attention">Needs Attention</span>
+            <span class="signal-arrow">›</span>
+          </div>
+          <div class="signal-desc">You've paid the minimum due in 5 of 8 recent cycles. Full statement payments carry a stronger signal.</div>
+          <div class="signal-nudge">
+            <span>💡</span>
+            <span>Paying your full statement amount — not just the minimum — is one of the most impactful things you can do for your credit profile.</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="limit-cta-card">
+        <div class="limit-cta-title">Ready for a limit review?</div>
+        <div class="limit-cta-sub">You've been a slice member for 14 months. You can request a credit limit review anytime — we'll assess your signals and respond within 24 hours.</div>
+        <button class="btn-primary" onclick="showScreen('review-request')">Request a Limit Review</button>
+      </div>
+      <div class="spacer-16"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 3: SIGNAL DETAIL                  -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen" id="signal-detail">
+      <div class="topbar">
+        <button class="topbar-back" onclick="showScreen('dashboard')">←</button>
+        <h2>Payment Completeness</h2>
+      </div>
+
+      <div class="content">
+        <!-- Status banner -->
+        <div style="background:var(--red-pale);border:1.5px solid #FECACA;border-radius:var(--radius-md);padding:16px;display:flex;gap:12px;align-items:flex-start;">
+          <div style="font-size:28px;">⚠️</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:4px;">Needs Attention</div>
+            <div style="font-size:12px;color:#991B1B;line-height:1.6;">You've paid the minimum due in 5 of your last 8 billing cycles. This is the signal with the most room to improve.</div>
+          </div>
+        </div>
+
+        <!-- What this means -->
+        <div class="card">
+          <div class="card-header"><h3>What this signal tracks</h3></div>
+          <div class="card-body" style="font-size:13px;color:var(--text-sub);line-height:1.7;">
+            Payment Completeness looks at whether you pay your <strong style="color:var(--text-main);">full statement amount</strong> or just the <strong style="color:var(--text-main);">minimum due</strong> each month. Both count as on-time payments — but paying in full shows a stronger ability to manage the credit extended to you.
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+          <div class="card-header"><h3>Your last 8 cycles</h3></div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#991B1B;width:60px;">Feb '26</span>
+                <div style="flex:1;height:6px;background:#FECACA;border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:var(--red);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#991B1B;">Min due</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--green-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#166534;width:60px;">Jan '26</span>
+                <div style="flex:1;height:6px;background:#BBF7D0;border-radius:3px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--green);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#166534;">Full ✓</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#991B1B;width:60px;">Dec '25</span>
+                <div style="flex:1;height:6px;background:#FECACA;border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:var(--red);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#991B1B;">Min due</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#991B1B;width:60px;">Nov '25</span>
+                <div style="flex:1;height:6px;background:#FECACA;border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:var(--red);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#991B1B;">Min due</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--green-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#166534;width:60px;">Oct '25</span>
+                <div style="flex:1;height:6px;background:#BBF7D0;border-radius:3px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--green);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#166534;">Full ✓</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#991B1B;width:60px;">Sep '25</span>
+                <div style="flex:1;height:6px;background:#FECACA;border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:var(--red);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#991B1B;">Min due</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--red-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#991B1B;width:60px;">Aug '25</span>
+                <div style="flex:1;height:6px;background:#FECACA;border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:var(--red);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#991B1B;">Min due</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--green-pale);border-radius:8px;">
+                <span style="font-size:12px;color:#166534;width:60px;">Jul '25</span>
+                <div style="flex:1;height:6px;background:#BBF7D0;border-radius:3px;overflow:hidden;"><div style="height:100%;width:100%;background:var(--green);border-radius:3px;"></div></div>
+                <span style="font-size:11px;font-weight:700;color:#166534;">Full ✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next best action -->
+        <div style="background:var(--purple-pale);border:1.5px solid var(--purple-mid);border-radius:var(--radius-md);padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:6px;">💡 Next best action</div>
+          <div style="font-size:12px;color:var(--text-sub);line-height:1.7;">Your minimum due this month is <strong style="color:var(--text-main);">₹517</strong>. Your full statement amount is <strong style="color:var(--text-main);">₹5,160</strong>. Paying the full amount builds a stronger repayment signal. Both options count as on-time — the choice is yours.</div>
+          <div style="margin-top:12px;">
+            <button class="btn-primary" onclick="showScreen('home')">Pay ₹5,160 now</button>
+          </div>
+        </div>
+
+        <div class="spacer-16"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 4: CIBIL ONBOARDING EXPLAINER   -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen" id="cibil">
+      <div class="topbar" style="background:var(--white);border-bottom:1px solid var(--border);">
+        <span style="font-size:22px;font-weight:800;letter-spacing:-1px;color:var(--purple);">slice</span>
+        <div class="topbar-spacer"></div>
+        <span style="font-size:12px;color:var(--text-muted);">Step 3 of 4</span>
+      </div>
+      <!-- Progress bar -->
+      <div style="height:3px;background:var(--border);flex-shrink:0;">
+        <div style="height:100%;width:75%;background:var(--purple);border-radius:2px;transition:width 0.3s;"></div>
+      </div>
+
+      <div class="onboard-wrap">
+        <div class="onboard-hero">
+          <div class="onboard-icon">🛡️</div>
+          <div class="onboard-title">Your slice card is a credit-building tool</div>
+          <div class="onboard-sub">Here's how responsible usage builds your CIBIL score — and what you should know before you activate.</div>
+        </div>
+
+        <div class="onboard-steps">
+          <div class="onboard-step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">On-time payments build your score</div>
+              <div class="step-desc">Every on-time payment is reported to CIBIL, CRIF, and Experian. Consistent payments over 6–12 months measurably improve your credit score.</div>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">Low utilisation = stronger profile</div>
+              <div class="step-desc">Keeping your usage under 40% of your credit limit is a positive signal. slice shows your real-time utilisation on your home screen.</div>
+            </div>
+          </div>
+          <div class="onboard-step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">Your card reports as a credit line</div>
+              <div class="step-desc">On your CIBIL report, your slice card will appear as a <strong>credit line</strong> — the same category as most bank credit cards. This is a standard credit product classification.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="onboard-check">
+          <input type="checkbox" id="cibil-ack" />
+          <div class="onboard-check-text">I understand how my slice card affects my credit report, and I'm ready to use it as a <strong>credit-building tool</strong>.</div>
+        </div>
+
+        <button class="btn-primary" onclick="showScreen('home')">Activate my slice card →</button>
+        <div class="spacer-8"></div>
+        <div class="help-text">Questions? Read our <span style="color:var(--purple);font-weight:600;">full CIBIL guide</span> or chat with support.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 5: LIMIT REVIEW REQUEST         -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen" id="review-request">
+      <div class="topbar">
+        <button class="topbar-back" onclick="showScreen('dashboard')">←</button>
+        <h2>Request Limit Review</h2>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;scrollbar-width:none;">
+        <div class="review-header">
+          <div class="review-header-icon">🔍</div>
+          <h2>Let's review your limit</h2>
+          <p>We'll assess your credit signals and get back to you within <strong>24 hours</strong>. Here's where your signals stand today.</p>
+        </div>
+
+        <div class="review-section">
+          <div class="signal-summary">
+            <div class="signal-summary-row">
+              <span style="font-size:16px;">✅</span>
+              <span class="ss-name">Repayment Streak</span>
+              <span class="signal-badge badge-strong">Strong</span>
+            </div>
+            <div class="signal-summary-row">
+              <span style="font-size:16px;">✅</span>
+              <span class="ss-name">Card Tenure</span>
+              <span class="signal-badge badge-strong">Strong</span>
+            </div>
+            <div class="signal-summary-row">
+              <span style="font-size:16px;">✅</span>
+              <span class="ss-name">Utilisation Trend</span>
+              <span class="signal-badge badge-strong">Strong</span>
+            </div>
+            <div class="signal-summary-row">
+              <span style="font-size:16px;">🟡</span>
+              <span class="ss-name">Transaction Frequency</span>
+              <span class="signal-badge badge-building">Building</span>
+            </div>
+            <div class="signal-summary-row">
+              <span style="font-size:16px;">⚠️</span>
+              <span class="ss-name">Payment Completeness</span>
+              <span class="signal-badge badge-attention">Needs Attention</span>
+            </div>
+          </div>
+
+          <div class="review-note">
+            <strong>⚠️ One signal needs attention</strong>
+            Your Payment Completeness signal is in "Needs Attention" state. This may affect your review outcome — we'll still process the request and give you a clear answer within 24 hours.
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-primary" onclick="showScreen('review-response')">Submit limit review request</button>
+            <button class="btn-outline" onclick="showScreen('dashboard')">Review my signals first</button>
+          </div>
+
+          <div class="help-text">Submitting a request does not affect your CIBIL score. We use your internal slice signals — no hard bureau pull.</div>
+          <div class="spacer-16"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SCREEN 6: LIMIT REVIEW RESPONSE        -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="screen" id="review-response">
+      <div class="topbar">
+        <button class="topbar-back" onclick="showScreen('review-request')">←</button>
+        <h2>Limit Review Result</h2>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:20px;">
+        <div class="response-wrap">
+          <div class="response-icon-circle declined">😔</div>
+          <div class="response-title">Not quite yet</div>
+          <div class="response-sub">Your limit review was assessed using your current signal profile. One signal is holding your profile back — here's exactly what we saw.</div>
+
+          <div class="response-signals">
+            <div class="response-signal-row">
+              <span class="rs-icon">✅</span>
+              <span class="rs-name">Repayment Streak</span>
+              <span class="rs-status ok">Strong</span>
+            </div>
+            <div class="response-signal-row">
+              <span class="rs-icon">✅</span>
+              <span class="rs-name">Card Tenure</span>
+              <span class="rs-status ok">Strong</span>
+            </div>
+            <div class="response-signal-row">
+              <span class="rs-icon">✅</span>
+              <span class="rs-name">Utilisation Trend</span>
+              <span class="rs-status ok">Strong</span>
+            </div>
+            <div class="response-signal-row">
+              <span class="rs-icon">🟡</span>
+              <span class="rs-name">Transaction Frequency</span>
+              <span class="rs-status" style="color:var(--amber);">Building</span>
+            </div>
+            <div class="response-signal-row">
+              <span class="rs-icon">⚠️</span>
+              <span class="rs-name">Payment Completeness</span>
+              <span class="rs-status issue">Needs Attention</span>
+            </div>
+          </div>
+
+          <!-- What to improve -->
+          <div style="width:100%;background:var(--white);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow);margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:8px;">💡 What to focus on</div>
+            <div style="font-size:12px;color:var(--text-sub);line-height:1.7;">Your <strong style="color:var(--text-main);">Payment Completeness</strong> signal is in "Needs Attention" state. Paying your full statement amount — rather than just the minimum — for your next 3 billing cycles will strengthen this signal significantly. We do not guarantee a specific outcome, but stronger signals improve your overall credit profile.</div>
+          </div>
+
+          <div class="reapply-banner">
+            <span class="reapply-icon">🔄</span>
+            <div class="reapply-text">
+              <strong>Auto re-review in 60 days</strong>
+              Turn this on and we'll automatically reassess your profile on May 28, 2026 — no need to reapply.
+              <div class="toggle-row">
+                <div class="toggle" id="auto-toggle" onclick="toggleAuto()"></div>
+                <span class="toggle-label" id="toggle-label">Enabled</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-secondary" onclick="showScreen('dashboard')">Back to Credit Health</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end screen-wrap -->
+
+  <!-- Bottom nav (hidden on CIBIL screen) -->
+  <div class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" onclick="navTo('home', this)">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Home</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="navTo('dashboard', this)">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Credit</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="showScreen('home')">
+      <span class="nav-icon">💸</span>
+      <span class="nav-label">Pay</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="showScreen('home')">
+      <span class="nav-icon">💰</span>
+      <span class="nav-label">Savings</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" onclick="showScreen('home')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profile</span>
+      <div class="nav-dot"></div>
+    </button>
+  </div>
+
+</div><!-- end phone -->
+
+<script>
+  const NO_NAV_SCREENS = ['cibil'];
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(id);
+    if (target) {
+      target.classList.add('active');
+      target.scrollTop = 0;
+    }
+    const nav = document.getElementById('bottom-nav');
+    nav.style.display = NO_NAV_SCREENS.includes(id) ? 'none' : 'flex';
+  }
+
+  function navTo(screenId, btn) {
+    showScreen(screenId);
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function showSignalDetail(type) {
+    showScreen('signal-detail');
+  }
+
+  let autoEnabled = true;
+  function toggleAuto() {
+    autoEnabled = !autoEnabled;
+    const toggle = document.getElementById('auto-toggle');
+    const label = document.getElementById('toggle-label');
+    toggle.style.background = autoEnabled ? 'var(--purple)' : '#D1D5DB';
+    toggle.style.setProperty('--after-right', autoEnabled ? '3px' : 'auto');
+    label.textContent = autoEnabled ? 'Enabled' : 'Off';
+    if (!autoEnabled) {
+      toggle.style.setProperty('--after-left', '3px');
+    }
+  }
+</script>
+</body>
+</html>
